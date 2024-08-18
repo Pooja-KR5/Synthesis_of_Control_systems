@@ -1,0 +1,56 @@
+%% LEAD_COMPENSATOR
+%% System Definition
+num = 4;
+den = [1,1,0];
+plant = tf(num,den);
+
+%% Transient Specifications
+Mp = 15;
+Ts = 5;
+%% Steady State Specification
+Kv_desired = 40;
+
+%% Computation of zeta and omg_n
+% Computing damping ratio and undamped natural frequency
+K     = log(Mp/100);
+zeta  = -K/(sqrt(pi^2+K^2));
+omg_n = 4/(Ts*zeta);
+
+%% Computation of Phase Margin(gamma) and Gain Crossover Frequency
+omg_gc = omg_n*sqrt(sqrt(1+4*zeta^4)-2*zeta^2);
+gamma = atan((2*zeta)/(sqrt(sqrt(1+4*zeta^4)-2*zeta^2)));
+
+%% Compensator design
+Kv_uncompensated = 4;
+K_prime = Kv_desired/Kv_uncompensated;
+[Gm,Pm,Wcp,Wcg] = margin(K_prime*plant);
+
+% Design before Adjustment for shift in gain crossover frequency
+phi_m = gamma - Pm*pi/180;
+
+alfa = (1-sin(phi_m))/(1+sin(phi_m));
+
+T = 1/(sqrt(alfa)*Wcg);
+
+compensator = K_prime*tf([T,1],[alfa*T,1]);
+
+% Design with Adjustment for shift in gain crossover frequency
+[Gm,Pm,Wcp,Wcg] = margin(compensator*plant);
+
+phi_m = phi_m + gamma-(Pm*pi/180);
+
+alfa = (1-sin(phi_m))/(1+sin(phi_m));
+
+gain_to_be_adjusted = 20*log10(1/sqrt(alfa));
+
+margin(K_prime*plant); grid on;
+
+fprintf("Look for the new gain crossover frequency where gain = %f \n\n", -1*gain_to_be_adjusted);
+pause 
+
+Wcg_new = 11.0;
+T = 1/(sqrt(alfa)*Wcg_new);
+
+compensator = K_prime*tf([T,1],[alfa*T,1]);
+
+margin(compensator*plant); grid on;
