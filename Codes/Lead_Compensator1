@@ -1,0 +1,76 @@
+close all; clear;
+%% Plant Definition
+num = 1;
+den = [1,1,0];
+
+%% Requirements
+Mp  = 10.0; % Percentage Peak overshoot
+Ts  =  5.0; % Settling Time;
+
+%% Dominant closed loop poles
+% Generating plant transfer function
+plant = tf(num,den);
+
+% Computing damping ratio and undamped natural frequency
+K     = log(Mp/100);
+zeta  = -K/(sqrt(pi^2+K^2));
+omg_n = 4/(Ts*zeta);
+
+% desired system
+num_desired = omg_n^2;
+den_desired = [1,2*zeta*omg_n, omg_n^2];
+desired_plant = tf(num_desired, den_desired);
+pole1 = -zeta*omg_n + 1i*omg_n*sqrt(1-zeta^2);
+pole2 = -zeta*omg_n - 1i*omg_n*sqrt(1-zeta^2);
+
+[mag, phase] = mag_phase(plant, pole1, 'rad');
+
+
+% keyboard
+
+%% Compensator Design
+theta = acos(zeta);
+phi = pi-phase;
+gamma = 0.5*(pi-theta-phi);
+
+zc = omg_n*(sin(gamma)/sin(theta+gamma));
+pc = omg_n*(sin(gamma+phi)/sin(theta+gamma+phi));
+K = 1.8969;
+compensator1 = K*tf([1,zc],[1,pc])
+
+compensated_plant = compensator1*plant;
+closed_loop_compensated_plant = feedback(compensated_plant,1);
+
+%% Plotting
+% Step Response
+figure(1), step(desired_plant); hold on; grid on;
+figure(1), step(closed_loop_compensated_plant); hold on;
+xlim([0,15]);
+
+% Pole-Zero Plot
+figure(2), pzplot(desired_plant); hold on; grid on;
+figure(2), pzplot(closed_loop_compensated_plant); hold on;
+
+% Root-Locus
+figure(3), rlocus(desired_plant); hold on; grid on;
+figure(3), rlocus(compensated_plant); hold on;
+
+function [mag,phase] = mag_phase(sys,x,units)
+    
+    % sets units to degrees by default
+    if nargin < 3 || isempty(units)
+        units = 'deg';
+    end
+    
+    % magnitude
+    mag = norm(evalfr(sys,x));
+    
+    % phase [deg]
+    phase = atan2d(imag(evalfr(sys,x)),real(evalfr(sys,x)));
+    
+    % converts phase to radians if necessary
+    if strcmpi(units,'rad')
+        phase = phase*(pi/180);
+    end
+    
+end
