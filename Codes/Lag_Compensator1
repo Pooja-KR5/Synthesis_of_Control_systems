@@ -1,0 +1,73 @@
+close all; clear;
+%% Plant Definition
+num           = 2;
+den           = [1,12,35,0];
+
+%% Requirements
+Kv_desired    = 10;
+zeta          = 0.577;
+omg_n         = 2.7;
+
+%% Dominant closed loop poles
+% desired system
+num_desired   = omg_n^2;
+den_desired   = [1,2*zeta*omg_n, omg_n^2];
+desired_plant = tf(num_desired, den_desired);
+pole1         = -zeta*omg_n + 1i*omg_n*sqrt(1-zeta^2);
+pole2         = -zeta*omg_n - 1i*omg_n*sqrt(1-zeta^2);
+
+%% Compensator Design
+% Generating plant transfer function
+K = 32.4;
+plant = tf(num,den);
+Kv_uncompensated = K*2/(5*7);
+
+beta = Kv_desired/Kv_uncompensated;
+
+% Choice of zg
+zg = 0.1;
+
+% Computation of pg
+pg = zg/beta;
+
+compensator = tf([1,zg],[1,pg]);
+
+[mag,phase] = mag_phase(compensator, pole1, 'rad');
+
+compensated_open_loop_plant = compensator*K*plant;
+compensated_closed_loop_plant = feedback(compensated_open_loop_plant,1);
+
+%% Plotting
+% Step Response
+figure(1), step(desired_plant); hold on; grid on;
+figure(1), step(compensated_closed_loop_plant); hold on;
+xlim([0,15]);
+
+% Pole-Zero Plot
+figure(2), pzplot(desired_plant); hold on; grid on;
+figure(2), pzplot(compensated_closed_loop_plant); hold on;
+
+% Root-Locus
+figure(3), rlocus(desired_plant); hold on; grid on;
+figure(3), rlocus(plant); hold on; grid on;
+figure(3), rlocus(compensated_open_loop_plant); hold on;
+
+function [mag,phase] = mag_phase(sys,x,units)
+    
+    % sets units to degrees by default
+    if nargin < 3 || isempty(units)
+        units = 'deg';
+    end
+    
+    % magnitude
+    mag = norm(evalfr(sys,x));
+    
+    % phase [deg]
+    phase = atan2d(imag(evalfr(sys,x)),real(evalfr(sys,x)));
+    
+    % converts phase to radians if necessary
+    if strcmpi(units,'rad')
+        phase = phase*(pi/180);
+    end
+    
+end
