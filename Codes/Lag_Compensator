@@ -1,0 +1,36 @@
+%% Plant definition 
+G1 = tf(1,[1,0]);
+ G2 = tf(1,[1,1]);
+ G3 = tf(1,[0.5,1]);
+
+ G = G1*G2*G3;
+
+ %% Transient Specifications
+ PM = 40*pi/180;
+ GM = 10;
+
+%% Steady state specifications
+Kv_desired = 5;
+
+%% Compensator design
+Kv_uncompensated = 1.0;
+K_prime = Kv_desired/Kv_uncompensated;
+
+margin(K_prime*G); grid on;
+
+fprintf("Choose the new gain crossover frequency such that the phase angle is %f \n\n", (-pi+PM)*180/pi);
+pause
+fprintf("Compute the gain at the chosen new gain crossover frequency \n\n");
+pause
+
+magnitude = 20;
+beta = 1/(10^(-magnitude/20));
+
+omg = 0.1;
+tau = 1/omg;
+
+
+compensator = tf([tau,1],[beta*tau,1]);
+
+
+margin(K_prime*compensator*G)
